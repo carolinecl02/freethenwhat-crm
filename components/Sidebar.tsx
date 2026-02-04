@@ -136,7 +136,6 @@ export default function Sidebar() {
           >
             <Logo
               variant="full"
-              inverse
               className={collapsed ? "text-xs shrink-0" : "shrink-0"}
             />
           </Link>
