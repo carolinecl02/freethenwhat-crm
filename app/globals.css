@@ -1,0 +1,16 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-red-hat-display: 'Red Hat Display', sans-serif;
+}
+
+body {
+  @apply bg-background text-primary-text;
+}
+
+/* Focus ring for accessibility */
+*:focus-visible {
+  @apply outline-2 outline-offset-2 outline-accent;
+}
