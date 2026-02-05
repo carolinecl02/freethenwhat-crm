@@ -21,9 +21,10 @@ const navSections = [
     ],
   },
   {
-    label: "TOOLS",
+    label: "CLIENT PARTNERS",
     items: [
-      { href: "/dashboard/campaigns", label: "Outreach", icon: MegaphoneIcon },
+      { href: "/dashboard/clientpartners", label: "Client partner list", icon: MegaphoneIcon },
+      { href: "/dashboard/campaigns", label: "Outreach toolkit", icon: TaskIcon },
     ],
   },
 ];
