@@ -30,7 +30,7 @@ const navSections: NavSection[] = [
     items: [
   
       { href: "/dashboard/clients", label: "Clients & leads", icon: ChartIcon },
-      { href: "/dashboard/tasks", label: "Tasks", icon: TaskIcon, badge: 1 },
+      { href: "/dashboard/tasks", label: "Tasks", icon: TaskIcon },
     ],
   },
   {

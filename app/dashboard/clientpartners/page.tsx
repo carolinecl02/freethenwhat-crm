@@ -76,6 +76,7 @@ const STATUS_OPTIONS = [
   { value: "Meeting held - waiting", label: "Meeting held - waiting" },
   { value: "Meeting held - interested", label: "Meeting held - interested" },
   { value: "Meeting held - no go", label: "Meeting held - no go" },
+  { value: "signed CP", label: "signed CP" },
 ] as const;
 
 const defaultForm = {
@@ -113,6 +114,7 @@ const STATUS_STYLES: Record<string, string> = {
   "Meeting held - waiting": "bg-purple-100 text-purple-800",
   "Meeting held - interested": "bg-emerald-100 text-emerald-800",
   "Meeting held - no go": "bg-red-100 text-red-800",
+  "signed CP": "bg-green-100 text-green-800",
 };
 
 export default function ClientPartnersPage() {
