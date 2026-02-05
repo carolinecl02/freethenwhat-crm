@@ -78,6 +78,10 @@ export default function ClientsPage() {
   const [form, setForm] = useState(defaultForm);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  const [editForm, setEditForm] = useState(defaultForm);
+  const [editSubmitting, setEditSubmitting] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
 
   const [filters, setFilters] = useState({
     id: "",
@@ -144,6 +148,18 @@ export default function ClientsPage() {
     setFormError(null);
   };
 
+  const openDetails = (client: Client) => {
+    setSelectedClient(client);
+    setEditForm({
+      first_name: client.first_name,
+      last_name: client.last_name,
+      email: client.email,
+      last_contact_date: client.last_contact_date ?? "",
+      status: client.status,
+    });
+    setEditError(null);
+  };
+
   const handleAddClient = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
@@ -178,6 +194,57 @@ export default function ClientsPage() {
       return;
     }
     closeModal();
+    fetchClients();
+  };
+
+  const handleUpdateClient = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedClient) return;
+
+    setEditError(null);
+
+    const first_name = editForm.first_name.trim();
+    const last_name = editForm.last_name.trim();
+    const email = editForm.email.trim();
+
+    if (!first_name || !last_name || !email) {
+      setEditError("First name, last name and email are required.");
+      return;
+    }
+
+    setEditSubmitting(true);
+
+    const { error: updateError } = await supabase
+      .from("clients")
+      .update({
+        first_name,
+        last_name,
+        email,
+        last_contact_date: editForm.last_contact_date || null,
+        status: editForm.status,
+      })
+      .eq("id", selectedClient.id);
+
+    setEditSubmitting(false);
+
+    if (updateError) {
+      setEditError(updateError.message);
+      return;
+    }
+
+    // Keep drawer open but refresh data and reflect changes locally
+    setSelectedClient((prev) =>
+      prev
+        ? {
+            ...prev,
+            first_name,
+            last_name,
+            email,
+            last_contact_date: editForm.last_contact_date || null,
+            status: editForm.status,
+          }
+        : prev
+    );
     fetchClients();
   };
 
@@ -264,25 +331,28 @@ export default function ClientsPage() {
                     {col.label}
                   </th>
                 ))}
+                <th className="text-right text-xs font-semibold uppercase tracking-wider text-secondary-text px-4 sm:px-5 py-3.5 whitespace-nowrap">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={COLUMNS.length} className="px-4 sm:px-5 py-12 text-center text-secondary-text text-sm">
+                  <td colSpan={COLUMNS.length + 1} className="px-4 sm:px-5 py-12 text-center text-secondary-text text-sm">
                     Loading…
                   </td>
                 </tr>
               ) : error ? (
                 <tr>
-                  <td colSpan={COLUMNS.length} className="px-4 sm:px-5 py-12 text-center text-red-600 text-sm">
+                  <td colSpan={COLUMNS.length + 1} className="px-4 sm:px-5 py-12 text-center text-red-600 text-sm">
                     {error}
                   </td>
                 </tr>
               ) : filteredClients.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={COLUMNS.length}
+                    colSpan={COLUMNS.length + 1}
                     className="px-4 sm:px-5 py-12 text-center text-secondary-text text-sm"
                   >
                     {clients.length === 0
@@ -322,6 +392,15 @@ export default function ClientsPage() {
                       >
                         {client.status}
                       </span>
+                    </td>
+                    <td className="px-4 sm:px-5 py-3 text-right">
+                      <button
+                        type="button"
+                        onClick={() => openDetails(client)}
+                        className="inline-flex items-center justify-center rounded-md border border-secondary-text/30 px-2.5 py-1.5 text-xs font-medium text-primary-text hover:bg-secondary-text/10 focus:outline-none focus:ring-2 focus:ring-accent/40"
+                      >
+                        View details
+                      </button>
                     </td>
                   </tr>
                 ))
@@ -450,6 +529,165 @@ export default function ClientsPage() {
               </div>
             </form>
           </div>
+        </div>
+      )}
+
+      {/* Details drawer (editable) */}
+      {selectedClient && (
+        <div
+          className="fixed inset-0 z-40 flex justify-end bg-black/30"
+          onClick={(e) => e.target === e.currentTarget && setSelectedClient(null)}
+          aria-modal="true"
+          role="dialog"
+        >
+          <aside className="h-full w-full max-w-[45rem] bg-white border-l border-secondary-text/10 shadow-card flex flex-col overflow-hidden">
+            <header className="flex items-center justify-between px-5 py-4 border-b border-secondary-text/10">
+              <div>
+                <h2 className="text-lg font-semibold text-primary-text">
+                  {editForm.first_name || selectedClient.first_name}{" "}
+                  {editForm.last_name || selectedClient.last_name}
+                </h2>
+                <p className="text-xs text-secondary-text mt-0.5">
+                  {editForm.email || selectedClient.email}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedClient(null)}
+                className="p-1.5 rounded-lg text-secondary-text hover:bg-secondary-text/10 hover:text-primary-text focus:outline-none focus:ring-2 focus:ring-accent/40"
+                aria-label="Close details"
+              >
+                <XIcon className="w-5 h-5" />
+              </button>
+            </header>
+
+            <form onSubmit={handleUpdateClient} className="flex-1 flex flex-col min-h-0">
+              <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4 min-h-0">
+                {editError && (
+                  <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">
+                    {editError}
+                  </p>
+                )}
+
+                <section className="space-y-3">
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-secondary-text">
+                    Basic details
+                  </h3>
+                  <div className="bg-background rounded-card border border-secondary-text/10 px-3 py-3 space-y-3">
+                    <div>
+                      <label className="block text-xs font-medium text-secondary-text mb-1">
+                        First name
+                      </label>
+                      <input
+                        type="text"
+                        value={editForm.first_name}
+                        onChange={(e) => setEditForm((f) => ({ ...f, first_name: e.target.value }))}
+                        className="w-full rounded-lg border border-secondary-text/30 bg-white text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/40"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-secondary-text mb-1">
+                        Last name
+                      </label>
+                      <input
+                        type="text"
+                        value={editForm.last_name}
+                        onChange={(e) => setEditForm((f) => ({ ...f, last_name: e.target.value }))}
+                        className="w-full rounded-lg border border-secondary-text/30 bg-white text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/40"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-secondary-text mb-1">
+                        Email
+                      </label>
+                      <input
+                        type="email"
+                        value={editForm.email}
+                        onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))}
+                        className="w-full rounded-lg border border-secondary-text/30 bg-white text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/40"
+                      />
+                    </div>
+                  </div>
+                </section>
+
+                <section className="space-y-3">
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-secondary-text">
+                    Client info
+                  </h3>
+                  <div className="bg-background rounded-card border border-secondary-text/10 px-3 py-3 space-y-3">
+                    <div>
+                      <label className="block text-xs font-medium text-secondary-text mb-1">
+                        Status
+                      </label>
+                      <select
+                        value={editForm.status}
+                        onChange={(e) => setEditForm((f) => ({ ...f, status: e.target.value }))}
+                        className="w-full rounded-lg border border-secondary-text/30 bg-white text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/40"
+                      >
+                        {STATUS_OPTIONS.map((o) => (
+                          <option key={o.value} value={o.value}>{o.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-secondary-text mb-1">
+                        Last contact date
+                      </label>
+                      <input
+                        type="date"
+                        value={editForm.last_contact_date}
+                        onChange={(e) => setEditForm((f) => ({ ...f, last_contact_date: e.target.value }))}
+                        className="w-full rounded-lg border border-secondary-text/30 bg-white text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/40"
+                      />
+                    </div>
+                  </div>
+                </section>
+
+                <section className="space-y-3">
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-secondary-text">
+                    System
+                  </h3>
+                  <div className="bg-background rounded-card border border-secondary-text/10 px-3 py-2.5 text-xs text-secondary-text space-y-1.5">
+                    <div className="flex justify-between gap-4">
+                      <span>ID</span>
+                      <span className="font-mono text-[11px] break-all text-primary-text">
+                        {selectedClient.id}
+                      </span>
+                    </div>
+                    <div className="flex justify-between gap-4">
+                      <span>Created</span>
+                      <span className="text-primary-text">
+                        {formatDate(selectedClient.created_at)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between gap-4">
+                      <span>Last updated</span>
+                      <span className="text-primary-text">
+                        {formatDate(selectedClient.updated_at)}
+                      </span>
+                    </div>
+                  </div>
+                </section>
+              </div>
+
+              <div className="border-t border-secondary-text/10 px-5 py-3 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setSelectedClient(null)}
+                  className="rounded-lg border border-secondary-text/20 px-4 py-2.5 text-sm font-medium text-primary-text hover:bg-secondary-text/5 focus:outline-none focus:ring-2 focus:ring-accent/40"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={editSubmitting}
+                  className="rounded-lg bg-accent text-white px-4 py-2.5 text-sm font-medium hover:opacity-90 disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-accent/40"
+                >
+                  {editSubmitting ? "Saving…" : "Save changes"}
+                </button>
+              </div>
+            </form>
+          </aside>
         </div>
       )}
     </div>
