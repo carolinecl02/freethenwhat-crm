@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 type Client = {
@@ -85,9 +85,9 @@ export default function ClientsPage() {
     status: "",
   });
 
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
-  const fetchClients = async () => {
+  const fetchClients = useCallback(async () => {
     setLoading(true);
     setError(null);
     const { data, error: err } = await supabase
@@ -101,11 +101,11 @@ export default function ClientsPage() {
       setClients((data as Client[]) ?? []);
     }
     setLoading(false);
-  };
+  }, [supabase]);
 
   useEffect(() => {
     fetchClients();
-  }, []);
+  }, [fetchClients]);
 
   const updateFilter = (key: keyof typeof filters, value: string) => {
     setFilters((prev) => ({ ...prev, [key]: value }));

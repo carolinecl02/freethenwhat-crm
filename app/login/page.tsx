@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, FormEvent, useEffect } from "react";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 
 type Mode = "signin" | "signup";
@@ -15,7 +16,17 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
 
-  let supabase;
+  useEffect(() => {
+    createClient().auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        router.replace("/dashboard");
+        return;
+      }
+      setCheckingAuth(false);
+    });
+  }, [router]);
+
+  let supabase: SupabaseClient;
   try {
     supabase = createClient();
   } catch (e) {
@@ -30,16 +41,6 @@ export default function LoginPage() {
       </div>
     );
   }
-
-  useEffect(() => {
-    createClient().auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        router.replace("/dashboard");
-        return;
-      }
-      setCheckingAuth(false);
-    });
-  }, [router]);
 
   if (checkingAuth) {
     return (

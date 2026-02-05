@@ -5,7 +5,19 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Logo from "./Logo";
 
-const navSections = [
+type NavItem = {
+  href: string;
+  label: string;
+  icon: ({ className }: { className?: string }) => JSX.Element;
+  badge?: number | string;
+};
+
+type NavSection = {
+  label?: string;
+  items: NavItem[];
+};
+
+const navSections: NavSection[] = [
   {
     items: [
   { href: "/dashboard", label: "Dashboard", icon: DashboardIcon }
