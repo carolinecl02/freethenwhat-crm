@@ -19,6 +19,15 @@ type ClientPartner = {
   updated_at: string;
 };
 
+type Note = {
+  id: string;
+  client_partner_id: string;
+  user_id: string;
+  note: string;
+  created_at: string;
+  updated_at: string;
+};
+
 function PlusIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
@@ -31,6 +40,14 @@ function XIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+    </svg>
+  );
+}
+
+function PencilIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
     </svg>
   );
 }
@@ -112,6 +129,12 @@ export default function ClientPartnersPage() {
   const [editForm, setEditForm] = useState(defaultForm);
   const [editSubmitting, setEditSubmitting] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [notesLoading, setNotesLoading] = useState(false);
+  const [newNoteText, setNewNoteText] = useState("");
+  const [addingNote, setAddingNote] = useState(false);
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [editingNoteText, setEditingNoteText] = useState("");
 
   const [filters, setFilters] = useState({
     id: "",
@@ -174,6 +197,22 @@ export default function ClientPartnersPage() {
     }
   }, [searchParams, router]);
 
+  const fetchNotes = async (clientPartnerId: string) => {
+    setNotesLoading(true);
+    const { data, error } = await supabase
+      .from("client_partner_notes")
+      .select("*")
+      .eq("client_partner_id", clientPartnerId)
+      .order("created_at", { ascending: false });
+    if (error) {
+      console.error("Error fetching notes:", error);
+      setNotes([]);
+    } else {
+      setNotes((data as Note[]) ?? []);
+    }
+    setNotesLoading(false);
+  };
+
   const openDetails = (partner: ClientPartner) => {
     setSelectedPartner(partner);
     setEditForm({
@@ -187,6 +226,10 @@ export default function ClientPartnersPage() {
       status: partner.status,
     });
     setEditError(null);
+    setNewNoteText("");
+    setEditingNoteId(null);
+    setEditingNoteText("");
+    fetchNotes(partner.id);
   };
 
   const openModal = () => {
@@ -303,6 +346,60 @@ export default function ClientPartnersPage() {
         : prev
     );
     fetchPartners();
+  };
+
+  const handleAddNote = async () => {
+    if (!selectedPartner || !newNoteText.trim()) return;
+
+    setAddingNote(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      setAddingNote(false);
+      return;
+    }
+
+    const { error } = await supabase.from("client_partner_notes").insert({
+      client_partner_id: selectedPartner.id,
+      user_id: user.id,
+      note: newNoteText.trim(),
+    });
+
+    setAddingNote(false);
+    if (error) {
+      console.error("Error adding note:", error);
+      return;
+    }
+
+    setNewNoteText("");
+    fetchNotes(selectedPartner.id);
+  };
+
+  const handleStartEditNote = (note: Note) => {
+    setEditingNoteId(note.id);
+    setEditingNoteText(note.note);
+  };
+
+  const handleCancelEditNote = () => {
+    setEditingNoteId(null);
+    setEditingNoteText("");
+  };
+
+  const handleSaveNote = async (noteId: string) => {
+    if (!selectedPartner || !editingNoteText.trim()) return;
+
+    const { error } = await supabase
+      .from("client_partner_notes")
+      .update({ note: editingNoteText.trim() })
+      .eq("id", noteId);
+
+    if (error) {
+      console.error("Error updating note:", error);
+      return;
+    }
+
+    setEditingNoteId(null);
+    setEditingNoteText("");
+    fetchNotes(selectedPartner.id);
   };
 
   return (
@@ -661,7 +758,7 @@ export default function ClientPartnersPage() {
           aria-modal="true"
           role="dialog"
         >
-          <aside className="h-full w-full max-w-md bg-white border-l border-secondary-text/10 shadow-card flex flex-col">
+          <aside className="h-full w-full max-w-[45rem] bg-white border-l border-secondary-text/10 shadow-card flex flex-col overflow-hidden">
             <header className="flex items-center justify-between px-5 py-4 border-b border-secondary-text/10">
               <div>
                 <h2 className="text-lg font-semibold text-primary-text">
@@ -682,8 +779,8 @@ export default function ClientPartnersPage() {
               </button>
             </header>
 
-            <form onSubmit={handleUpdatePartner} className="flex-1 flex flex-col">
-              <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+            <form onSubmit={handleUpdatePartner} className="flex-1 flex flex-col min-h-0">
+              <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4 min-h-0">
                 {editError && (
                   <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">
                     {editError}
@@ -811,6 +908,91 @@ export default function ClientPartnersPage() {
                       className="w-full resize-none rounded-lg border border-secondary-text/30 bg-white text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/40"
                       placeholder="Describe their niche…"
                     />
+                  </div>
+                </section>
+
+                <section className="space-y-3">
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-secondary-text">
+                    Notes
+                  </h3>
+                  <div className="bg-background rounded-card border border-secondary-text/10 px-3 py-3 space-y-3">
+                    {/* Add new note */}
+                    <div className="space-y-2">
+                      <textarea
+                        value={newNoteText}
+                        onChange={(e) => setNewNoteText(e.target.value)}
+                        rows={3}
+                        placeholder="Add a note…"
+                        className="w-full resize-none rounded-lg border border-secondary-text/30 bg-white text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/40"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddNote}
+                        disabled={!newNoteText.trim() || addingNote}
+                        className="w-full rounded-lg bg-accent text-white px-3 py-2 text-sm font-medium hover:opacity-90 disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-accent/40"
+                      >
+                        {addingNote ? "Adding…" : "Add note"}
+                      </button>
+                    </div>
+
+                    {/* Existing notes */}
+                    {notesLoading ? (
+                      <p className="text-xs text-secondary-text text-center py-2">Loading notes…</p>
+                    ) : notes.length === 0 ? (
+                      <p className="text-xs text-secondary-text text-center py-2">No notes yet.</p>
+                    ) : (
+                      <div className="space-y-3 pt-2 border-t border-secondary-text/10">
+                        {notes.map((note) => (
+                          <div key={note.id} className="space-y-2">
+                            {editingNoteId === note.id ? (
+                              <>
+                                <textarea
+                                  value={editingNoteText}
+                                  onChange={(e) => setEditingNoteText(e.target.value)}
+                                  rows={3}
+                                  className="w-full resize-none rounded-lg border border-secondary-text/30 bg-white text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/40"
+                                />
+                                <div className="flex gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSaveNote(note.id)}
+                                    disabled={!editingNoteText.trim()}
+                                    className="rounded-lg bg-accent text-white px-3 py-1.5 text-xs font-medium hover:opacity-90 disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-accent/40"
+                                  >
+                                    Save
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={handleCancelEditNote}
+                                    className="rounded-lg border border-secondary-text/20 px-3 py-1.5 text-xs font-medium text-primary-text hover:bg-secondary-text/5 focus:outline-none focus:ring-2 focus:ring-accent/40"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </>
+                            ) : (
+                              <>
+                                <p className="text-sm text-primary-text whitespace-pre-wrap">{note.note}</p>
+                                <div className="flex items-center justify-between">
+                                  <span className="text-xs text-secondary-text">
+                                    {formatDate(note.created_at)}
+                                    {note.updated_at !== note.created_at && " (edited)"}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleStartEditNote(note)}
+                                    className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-secondary-text hover:bg-secondary-text/10 hover:text-primary-text focus:outline-none focus:ring-2 focus:ring-accent/40"
+                                  >
+                                    <PencilIcon className="w-3 h-3" />
+                                    Edit
+                                  </button>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </section>
 
