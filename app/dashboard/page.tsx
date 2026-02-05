@@ -293,14 +293,14 @@ export default async function DashboardPage() {
                                           <>
                                             New client/prospect added -{" "}
                                             <span className="font-medium">
-                                              "{item.firstName} {item.lastName}"
+                                              &quot;{item.firstName} {item.lastName}&quot;
                                             </span>
                                           </>
                                         ) : (
                                           <>
                                             New CP/referrer -{" "}
                                             <span className="font-medium">
-                                              "{item.firstName} {item.lastName}"
+                                              &quot;{item.firstName} {item.lastName}&quot;
                                             </span>
                                           </>
                                         )}
