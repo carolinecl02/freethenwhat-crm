@@ -34,10 +34,10 @@ const navSections: NavSection[] = [
     ],
   },
   {
-    label: "CLIENT PARTNERS",
+    label: "BUSINESS PARTNERS",
     items: [
-      { href: "/dashboard/clientpartners", label: "Client partner list", icon: MegaphoneIcon },
-      { href: "/dashboard/campaigns", label: "Outreach toolkit", icon: TaskIcon },
+      { href: "/dashboard/clientpartners", label: "Client partners & network", icon: MegaphoneIcon },
+      /*{ href: "/dashboard/campaigns", label: "Outreach toolkit", icon: TaskIcon },*/
     ],
   },
 ];

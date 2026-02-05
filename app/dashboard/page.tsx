@@ -144,6 +144,14 @@ export default async function DashboardPage() {
 
   const totalClientPartners = cpError ? 0 : (cpCount ?? 0);
 
+  // Count client partners with status 'Meeting held - interested'
+  const { count: interestedCount, error: interestedError } = await supabase
+    .from("client_partners")
+    .select("*", { count: "exact", head: true })
+    .eq("status", "Meeting held - interested");
+
+  const totalInterestedLeads = interestedError ? 0 : (interestedCount ?? 0);
+
   // Recent activity: clients and client partners created in the last 7 days
   const now = new Date();
   const sevenDaysAgo = new Date();
@@ -218,15 +226,25 @@ export default async function DashboardPage() {
         </p>
 
         {/* Overview cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-          <div className="bg-white rounded-card p-5 shadow-card border border-secondary-text/5">
-            <p className="text-sm font-medium text-secondary-text mb-1">Total clients</p>
-            <p className="text-2xl font-bold text-primary-text">{totalClients}</p>
-            
+        <div className="space-y-4 mb-6">
+          {/* Client stats */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="bg-white rounded-card p-5 shadow-card border border-secondary-text/5">
+              <p className="text-sm font-medium text-secondary-text mb-1">Total clients</p>
+              <p className="text-2xl font-bold text-primary-text">{totalClients}</p>
+            </div>
           </div>
-          <div className="bg-white rounded-card p-5 shadow-card border border-secondary-text/5">
-            <p className="text-sm font-medium text-secondary-text mb-1">Client partners</p>
-            <p className="text-2xl font-bold text-primary-text">{totalClientPartners}</p>
+          
+          {/* Client partner stats */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="bg-white rounded-card p-5 shadow-card border border-secondary-text/5">
+              <p className="text-sm font-medium text-secondary-text mb-1">Signed CPs</p>
+              <p className="text-2xl font-bold text-primary-text">{totalClientPartners}</p>
+            </div>
+            <div className="bg-white rounded-card p-5 shadow-card border border-secondary-text/5">
+              <p className="text-sm font-medium text-secondary-text mb-1">CPs: interested leads</p>
+              <p className="text-2xl font-bold text-primary-text">{totalInterestedLeads}</p>
+            </div>
           </div>
         </div>
 
