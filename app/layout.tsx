@@ -11,6 +11,9 @@ const redHatDisplay = Red_Hat_Display({
 export const metadata: Metadata = {
   title: "Free. Then What - CRM",
   description: "CRM application for Free. Then What",
+  icons: {
+    icon: "/favicon.svg",
+  },
 };
 
 export default function RootLayout({

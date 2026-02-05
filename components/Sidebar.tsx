@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import Logo from "./Logo";
 
 type NavItem = {
@@ -114,10 +115,40 @@ function CogIcon({ className }: { className?: string }) {
   );
 }
 
+function LogOutIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v3.75M15.75 9H21m-3.75 9a9 9 0 11-18 0 9 9 0 0118 0m-9-3.75h.008v.008H12v-.008z" />
+    </svg>
+  );
+}
+
 export default function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setUserMenuOpen(false);
+      }
+    }
+    if (userMenuOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [userMenuOpen]);
+
+  async function handleLogOut() {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    setUserMenuOpen(false);
+    setMobileOpen(false);
+    window.location.href = "/login";
+  }
 
   return (
     <>
@@ -225,8 +256,14 @@ export default function Sidebar() {
             <CogIcon className="w-5 h-5 shrink-0" />
             {!collapsed && <span>Settings</span>}
           </Link>
-          <div className={!collapsed ? "pt-2 mt-2 border-t border-sidebar-border" : "pt-2"}>
-            <div className={`flex items-center gap-3 px-3 py-2 rounded-lg ${collapsed ? "justify-center" : ""}`}>
+          <div className={`${!collapsed ? "pt-2 mt-2 border-t border-sidebar-border" : "pt-2"} relative`} ref={userMenuRef}>
+            <button
+              type="button"
+              onClick={() => setUserMenuOpen(!userMenuOpen)}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left text-sidebar-text-muted hover:bg-sidebar-hover hover:text-primary-text transition-colors ${collapsed ? "justify-center" : ""}`}
+              aria-expanded={userMenuOpen}
+              aria-haspopup="true"
+            >
               <div className="h-9 w-9 shrink-0 rounded-full bg-accent/30 flex items-center justify-center text-primary-text font-semibold text-sm">
                 U
               </div>
@@ -237,9 +274,27 @@ export default function Sidebar() {
                 </div>
               )}
               {!collapsed && (
-                <ChevronRight className="w-4 h-4 text-sidebar-text-muted shrink-0" />
+                <ChevronRight
+                  className={`w-4 h-4 text-sidebar-text-muted shrink-0 transition-transform ${userMenuOpen ? "rotate-90" : ""}`}
+                />
               )}
-            </div>
+            </button>
+            {userMenuOpen && (
+              <div
+                className={`absolute left-0 bg-sidebar border border-sidebar-border rounded-lg shadow-lg py-1 min-w-[160px] z-50 ${
+                  collapsed ? "left-full ml-2 bottom-0" : "bottom-full mb-1"
+                }`}
+              >
+                <button
+                  type="button"
+                  onClick={handleLogOut}
+                  className="flex items-center gap-3 w-full px-3 py-2 text-sm text-sidebar-text-muted hover:bg-sidebar-hover hover:text-primary-text transition-colors"
+                >
+                  <LogOutIcon className="w-5 h-5 shrink-0" />
+                  Log out
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </aside>
