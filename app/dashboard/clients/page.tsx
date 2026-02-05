@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 type Client = {
@@ -68,6 +69,8 @@ function shortId(id: string) {
 }
 
 export default function ClientsPage() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -106,6 +109,15 @@ export default function ClientsPage() {
   useEffect(() => {
     fetchClients();
   }, [fetchClients]);
+
+  useEffect(() => {
+    if (searchParams.get("add") === "1") {
+      setForm(defaultForm);
+      setFormError(null);
+      setModalOpen(true);
+      router.replace("/dashboard/clients", { scroll: false });
+    }
+  }, [searchParams, router]);
 
   const updateFilter = (key: keyof typeof filters, value: string) => {
     setFilters((prev) => ({ ...prev, [key]: value }));

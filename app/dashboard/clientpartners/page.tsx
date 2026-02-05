@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 type ClientPartner = {
@@ -98,6 +99,8 @@ const STATUS_STYLES: Record<string, string> = {
 };
 
 export default function ClientPartnersPage() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const [partners, setPartners] = useState<ClientPartner[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -161,6 +164,15 @@ export default function ClientPartnersPage() {
     fetchPartners();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (searchParams.get("add") === "1") {
+      setForm(defaultForm);
+      setFormError(null);
+      setModalOpen(true);
+      router.replace("/dashboard/clientpartners", { scroll: false });
+    }
+  }, [searchParams, router]);
 
   const openDetails = (partner: ClientPartner) => {
     setSelectedPartner(partner);
