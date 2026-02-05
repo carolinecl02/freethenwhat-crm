@@ -102,9 +102,13 @@ export default function ClientPartnersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [selectedPartner, setSelectedPartner] = useState<ClientPartner | null>(null);
   const [form, setForm] = useState(defaultForm);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState(defaultForm);
+  const [editSubmitting, setEditSubmitting] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
 
   const [filters, setFilters] = useState({
     id: "",
@@ -157,6 +161,21 @@ export default function ClientPartnersPage() {
     fetchPartners();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const openDetails = (partner: ClientPartner) => {
+    setSelectedPartner(partner);
+    setEditForm({
+      first_name: partner.first_name,
+      last_name: partner.last_name,
+      email: partner.email,
+      niche: partner.niche ?? "",
+      phone_number: partner.phone_number ?? "",
+      last_contact_date: partner.last_contact_date ?? "",
+      type: partner.type,
+      status: partner.status,
+    });
+    setEditError(null);
+  };
 
   const openModal = () => {
     setForm(defaultForm);
@@ -212,6 +231,65 @@ export default function ClientPartnersPage() {
     }
 
     closeModal();
+    fetchPartners();
+  };
+
+  const handleUpdatePartner = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedPartner) return;
+
+    setEditError(null);
+
+    const first_name = editForm.first_name.trim();
+    const last_name = editForm.last_name.trim();
+    const email = editForm.email.trim();
+    const niche = editForm.niche.trim();
+    const phone_number = editForm.phone_number.trim();
+
+    if (!first_name || !last_name || !email) {
+      setEditError("First name, last name and email are required.");
+      return;
+    }
+
+    setEditSubmitting(true);
+
+    const { error: updateError } = await supabase
+      .from("client_partners")
+      .update({
+        first_name,
+        last_name,
+        email,
+        niche: niche || null,
+        phone_number: phone_number || null,
+        last_contact_date: editForm.last_contact_date || null,
+        type: editForm.type,
+        status: editForm.status,
+      })
+      .eq("id", selectedPartner.id);
+
+    setEditSubmitting(false);
+
+    if (updateError) {
+      setEditError(updateError.message);
+      return;
+    }
+
+    // Keep drawer open but refresh data and reflect changes locally
+    setSelectedPartner((prev) =>
+      prev
+        ? {
+            ...prev,
+            first_name,
+            last_name,
+            email,
+            niche: niche || null,
+            phone_number: phone_number || null,
+            last_contact_date: editForm.last_contact_date || null,
+            type: editForm.type,
+            status: editForm.status,
+          }
+        : prev
+    );
     fetchPartners();
   };
 
@@ -383,6 +461,15 @@ export default function ClientPartnersPage() {
                         {partner.status}
                       </span>
                     </td>
+                    <td className="px-4 sm:px-5 py-3 text-right">
+                      <button
+                        type="button"
+                        onClick={() => openDetails(partner)}
+                        className="inline-flex items-center justify-center rounded-md border border-secondary-text/30 px-2.5 py-1.5 text-xs font-medium text-primary-text hover:bg-secondary-text/10 focus:outline-none focus:ring-2 focus:ring-accent/40"
+                      >
+                        View details
+                      </button>
+                    </td>
                   </tr>
                 ))
               )}
@@ -551,6 +638,215 @@ export default function ClientPartnersPage() {
               </div>
             </form>
           </div>
+        </div>
+      )}
+
+      {/* Details drawer (editable) */}
+      {selectedPartner && (
+        <div
+          className="fixed inset-0 z-40 flex justify-end bg-black/30"
+          onClick={(e) => e.target === e.currentTarget && setSelectedPartner(null)}
+          aria-modal="true"
+          role="dialog"
+        >
+          <aside className="h-full w-full max-w-md bg-white border-l border-secondary-text/10 shadow-card flex flex-col">
+            <header className="flex items-center justify-between px-5 py-4 border-b border-secondary-text/10">
+              <div>
+                <h2 className="text-lg font-semibold text-primary-text">
+                  {editForm.first_name || selectedPartner.first_name}{" "}
+                  {editForm.last_name || selectedPartner.last_name}
+                </h2>
+                <p className="text-xs text-secondary-text mt-0.5">
+                  {editForm.email || selectedPartner.email}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedPartner(null)}
+                className="p-1.5 rounded-lg text-secondary-text hover:bg-secondary-text/10 hover:text-primary-text focus:outline-none focus:ring-2 focus:ring-accent/40"
+                aria-label="Close details"
+              >
+                <XIcon className="w-5 h-5" />
+              </button>
+            </header>
+
+            <form onSubmit={handleUpdatePartner} className="flex-1 flex flex-col">
+              <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+                {editError && (
+                  <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">
+                    {editError}
+                  </p>
+                )}
+
+                <section className="space-y-3">
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-secondary-text">
+                    Basic details
+                  </h3>
+                  <div className="bg-background rounded-card border border-secondary-text/10 px-3 py-3 space-y-3">
+                    <div>
+                      <label className="block text-xs font-medium text-secondary-text mb-1">
+                        First name
+                      </label>
+                      <input
+                        type="text"
+                        value={editForm.first_name}
+                        onChange={(e) => setEditForm((f) => ({ ...f, first_name: e.target.value }))}
+                        className="w-full rounded-lg border border-secondary-text/30 bg-white text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/40"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-secondary-text mb-1">
+                        Last name
+                      </label>
+                      <input
+                        type="text"
+                        value={editForm.last_name}
+                        onChange={(e) => setEditForm((f) => ({ ...f, last_name: e.target.value }))}
+                        className="w-full rounded-lg border border-secondary-text/30 bg-white text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/40"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-secondary-text mb-1">
+                        Email
+                      </label>
+                      <input
+                        type="email"
+                        value={editForm.email}
+                        onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))}
+                        className="w-full rounded-lg border border-secondary-text/30 bg-white text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/40"
+                      />
+                    </div>
+                  </div>
+                </section>
+
+                <section className="space-y-3">
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-secondary-text">
+                    Partner info
+                  </h3>
+                  <div className="bg-background rounded-card border border-secondary-text/10 px-3 py-3 space-y-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium text-secondary-text mb-1">
+                          Type
+                        </label>
+                        <select
+                          value={editForm.type}
+                          onChange={(e) => setEditForm((f) => ({ ...f, type: e.target.value }))}
+                          className="w-full rounded-lg border border-secondary-text/30 bg-white text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/40"
+                        >
+                          {TYPE_OPTIONS.map((o) => (
+                            <option key={o.value} value={o.value}>{o.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-secondary-text mb-1">
+                          Status
+                        </label>
+                        <select
+                          value={editForm.status}
+                          onChange={(e) => setEditForm((f) => ({ ...f, status: e.target.value }))}
+                          className="w-full rounded-lg border border-secondary-text/30 bg-white text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/40"
+                        >
+                          {STATUS_OPTIONS.map((o) => (
+                            <option key={o.value} value={o.value}>{o.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-secondary-text mb-1">
+                        Last contact date
+                      </label>
+                      <input
+                        type="date"
+                        value={editForm.last_contact_date}
+                        onChange={(e) => setEditForm((f) => ({ ...f, last_contact_date: e.target.value }))}
+                        className="w-full rounded-lg border border-secondary-text/30 bg-white text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/40"
+                      />
+                    </div>
+                  </div>
+                </section>
+
+                <section className="space-y-3">
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-secondary-text">
+                    Contact details
+                  </h3>
+                  <div className="bg-background rounded-card border border-secondary-text/10 px-3 py-3 space-y-3">
+                    <div>
+                      <label className="block text-xs font-medium text-secondary-text mb-1">
+                        Phone number
+                      </label>
+                      <input
+                        type="tel"
+                        value={editForm.phone_number}
+                        onChange={(e) => setEditForm((f) => ({ ...f, phone_number: e.target.value }))}
+                        className="w-full rounded-lg border border-secondary-text/30 bg-white text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/40"
+                      />
+                    </div>
+                  </div>
+                </section>
+
+                <section className="space-y-3">
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-secondary-text">
+                    Niche
+                  </h3>
+                  <div className="bg-background rounded-card border border-secondary-text/10 px-3 py-3">
+                    <textarea
+                      value={editForm.niche}
+                      onChange={(e) => setEditForm((f) => ({ ...f, niche: e.target.value }))}
+                      rows={3}
+                      className="w-full resize-none rounded-lg border border-secondary-text/30 bg-white text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/40"
+                      placeholder="Describe their niche…"
+                    />
+                  </div>
+                </section>
+
+                <section className="space-y-3">
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-secondary-text">
+                    System
+                  </h3>
+                  <div className="bg-background rounded-card border border-secondary-text/10 px-3 py-2.5 text-xs text-secondary-text space-y-1.5">
+                    <div className="flex justify-between gap-4">
+                      <span>ID</span>
+                      <span className="font-mono text-[11px] break-all text-primary-text">
+                        {selectedPartner.id}
+                      </span>
+                    </div>
+                    <div className="flex justify-between gap-4">
+                      <span>Created</span>
+                      <span className="text-primary-text">
+                        {formatDate(selectedPartner.created_at)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between gap-4">
+                      <span>Last updated</span>
+                      <span className="text-primary-text">
+                        {formatDate(selectedPartner.updated_at)}
+                      </span>
+                    </div>
+                  </div>
+                </section>
+              </div>
+
+              <div className="border-t border-secondary-text/10 px-5 py-3 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setSelectedPartner(null)}
+                  className="rounded-lg border border-secondary-text/20 px-4 py-2.5 text-sm font-medium text-primary-text hover:bg-secondary-text/5 focus:outline-none focus:ring-2 focus:ring-accent/40"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={editSubmitting}
+                  className="rounded-lg bg-accent text-white px-4 py-2.5 text-sm font-medium hover:opacity-90 disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-accent/40"
+                >
+                  {editSubmitting ? "Saving…" : "Save changes"}
+                </button>
+              </div>
+            </form>
+          </aside>
         </div>
       )}
     </div>
