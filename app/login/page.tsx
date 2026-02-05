@@ -5,11 +5,8 @@ import { useState, FormEvent, useEffect } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 
-type Mode = "signin" | "signup";
-
 export default function LoginPage() {
   const router = useRouter();
-  const [mode, setMode] = useState<Mode>("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
@@ -56,31 +53,16 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      if (mode === "signin") {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) {
-          console.error("Sign in error:", error);
-          setMessage({ type: "error", text: error.message });
-          setLoading(false);
-          return;
-        }
-        // Full page navigation so the next request sends the new session cookies to the server
-        window.location.href = "/dashboard";
-        return;
-      } else {
-        const { error } = await supabase.auth.signUp({ email, password });
-        if (error) {
-          console.error("Sign up error:", error);
-          setMessage({ type: "error", text: error.message });
-          setLoading(false);
-          return;
-        }
-        setMessage({
-          type: "success",
-          text: "Check your email for the confirmation link, or sign in if you're already confirmed.",
-        });
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        console.error("Sign in error:", error);
+        setMessage({ type: "error", text: error.message });
         setLoading(false);
+        return;
       }
+      // Full page navigation so the next request sends the new session cookies to the server
+      window.location.href = "/dashboard";
+      return;
     } catch (err) {
       console.error("Login error:", err);
       setMessage({ type: "error", text: "Something went wrong. Please try again." });
@@ -97,7 +79,7 @@ export default function LoginPage() {
               Free. Then What
             </h1>
             <p className="text-sm text-secondary-text mt-1">
-              {mode === "signin" ? "Sign in to your account" : "Create an account"}
+              Sign in to your account
             </p>
           </div>
 
@@ -135,7 +117,7 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 className="w-full px-3 py-2.5 rounded-panel border border-secondary-text/20 bg-background text-primary-text placeholder:text-secondary-text/60 focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-colors"
-                autoComplete={mode === "signin" ? "current-password" : "new-password"}
+                autoComplete="current-password"
                 required
                 minLength={6}
               />
@@ -156,24 +138,9 @@ export default function LoginPage() {
               disabled={loading}
               className="w-full py-2.5 rounded-panel bg-accent text-white font-medium hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 transition-opacity disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {loading ? "Please wait…" : mode === "signin" ? "Sign in" : "Sign up"}
+              {loading ? "Please wait…" : "Sign in"}
             </button>
           </form>
-
-          <div className="mt-6 text-center">
-            <button
-              type="button"
-              onClick={() => {
-                setMode(mode === "signin" ? "signup" : "signin");
-                setMessage(null);
-              }}
-              className="text-sm text-accent hover:underline"
-            >
-              {mode === "signin"
-                ? "Don't have an account? Sign up"
-                : "Already have an account? Sign in"}
-            </button>
-          </div>
         </div>
       </div>
     </div>
